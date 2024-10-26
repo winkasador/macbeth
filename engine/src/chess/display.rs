@@ -1,5 +1,4 @@
-use super::position;
-use super::piece;
+use super::*;
 
 pub fn ascii(position: &position::Position) -> String {
     let mut ascii: String = "  +------------------------+\n".to_owned();
@@ -47,4 +46,19 @@ pub fn get_piece_ascii(piece: piece::Piece, color: piece::Color) -> char {
     }
 
     return piece_ascii;
+}
+
+pub fn board_index_to_coordinate_name(index: i32) -> String {
+    let rank = index / 8;
+    let file = index % 8 + 97;
+
+    format!("{}{}", char::from(file as u8), rank + 1)
+}
+
+pub fn list_moves(moves: &Vec<moves::Move>) -> String {
+    let formatted_moves: Vec<String> = moves.iter()
+        .map(|mv| mv.to_string())
+        .collect();
+
+    format!("{}", formatted_moves.join(", "))
 }
