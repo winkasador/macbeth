@@ -1,11 +1,13 @@
-use super::piece;
+use super::piece::{self, Color};
 
 pub struct Position {
     pub bitboards: [i64; 12],
     pub occupation_bitboard: i64,
     pub castling_rights: [bool; 4],
     pub en_passant_index: i32,
-    pub side_to_move: piece::Color
+    pub side_to_move: piece::Color,
+    pub half_move_clock: i32,
+    pub full_move_clock: i32
 }
 
 impl Position {
@@ -15,12 +17,15 @@ impl Position {
             occupation_bitboard: 0,
             castling_rights: [false; 4],
             en_passant_index: -1,
-            side_to_move: piece::Color::White
+            side_to_move: piece::Color::White,
+            half_move_clock: 0,
+            full_move_clock: 1
         }
     }
 }
 
-pub enum CastlingDirection {
+#[derive(PartialEq, Debug)]
+pub enum CastlingSide {
     Short = 0,
     Long = 1,
 }
@@ -31,6 +36,11 @@ pub fn is_square_occupied(position: &Position, index: i32) -> bool {
 
 pub fn is_square_occupied_by_color(position: &Position, index: i32, color: &piece::Color) -> bool {
     get_piece_at(position, index).1 == *color
+}
+
+pub fn set_castling_rights(position: &mut Position, color: Color, side: CastlingSide, is_available: bool) {
+    let castling_index = (if side == CastlingSide::Short {0} else {1}) + (if color == Color::White { 0 } else { 2 } );
+    position.castling_rights[castling_index] = is_available;
 }
 
 pub fn get_piece_at(position: &Position, index: i32) -> (piece::Piece, piece::Color) {

@@ -1,17 +1,8 @@
 pub mod chess;
 
-use chess::fen;
-use chess::piece;
-use chess::display;
-use chess::moves;
-use chess::position;
+use chess::*;
 
 fn main() {
     let mut position = fen::position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-    let index = 9;
-
-    position::set_piece_at(&mut position, index, piece::Piece::Pawn, &piece::Color::Black);
     println!("{}", display::ascii(&position));
-    println!("Moves: {}", display::list_moves(&moves::get_pawn_unchecked_moves(&position, index, &piece::Color::Black)));
 }
