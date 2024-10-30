@@ -43,6 +43,10 @@ pub fn set_castling_rights(position: &mut Position, color: Color, side: Castling
     position.castling_rights[castling_index] = is_available;
 }
 
+pub fn get_pieces_attacking(position: &Position, index: i32) {
+    
+}
+
 pub fn get_piece_at(position: &Position, index: i32) -> (piece::Piece, piece::Color) {
     if !is_square_occupied(position, index) { // Faster overall
         return (piece::Piece::Empty, piece::Color::None);

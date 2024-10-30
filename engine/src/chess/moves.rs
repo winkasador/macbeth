@@ -4,6 +4,12 @@ use super::display;
 use super::piece;
 use super::position;
 
+const KNIGHT_MOVES: &[i32] = &[-17, -15, -10, -6, 6, 10, 15, 17];
+const BISHOP_DIRECTIONS: &[i32] = &[-9, -7, 7, 9];
+const ROOK_DIRECTIONS: &[i32] = &[-8, -1, 1, 8];
+const QUEEN_DIRECTIONS: &[i32] = &[-9, -8, -7, -1, 1, 7, 8, 9];
+const KING_DIRECTIONS: &[i32] = &[-9, -8, -7, -1, 1, 7, 8, 9];
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PromotionOption {
     None,
@@ -37,6 +43,39 @@ impl fmt::Display for Move {
     }
 }
 
+pub fn get_unchecked_moves(position: &position::Position) -> Vec<Move> {
+    let mut moves: Vec<Move> = Vec::new();
+    
+    for index in 0..64 {
+        let piece = position::get_piece_at(position, index);
+        if piece.1 != position.side_to_move { continue; }
+
+        match piece.0 {
+            piece::Piece::Pawn => {
+                moves.append(&mut get_pawn_unchecked_moves(position, index, &piece.1));
+            },
+            piece::Piece::Knight => {
+                moves.append(&mut get_knight_unchecked_moves(position, index, &piece.1));
+            }
+            piece::Piece::Bishop => {
+                moves.append(&mut get_bishop_unchecked_moves(position, index, &piece.1));
+            },
+            piece::Piece::Rook => {
+                moves.append(&mut get_rook_unchecked_moves(position, index, &piece.1));
+            },
+            piece::Piece::Queen => {
+                moves.append(&mut get_queen_unchecked_moves(position, index, &piece.1));
+            },
+            piece::Piece::King => {
+                moves.append(&mut get_king_unchecked_moves(position, index, &piece.1));
+            },
+            _ => {}
+        }
+    }
+
+    moves
+}
+
 /// Gets all moves a pawn could theoretically make, regardless of if they are legal or not.
 pub fn get_pawn_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
@@ -64,6 +103,110 @@ pub fn get_pawn_unchecked_moves(position: &position::Position, index: i32, color
         let opponent_rank = (index + 9 * direction) / 8;
         if opponent_rank == rank + 1 * direction {
             add_pawn_move(&mut moves, index, index + 9 * direction, &color);
+        }
+    }
+
+    moves
+}
+
+fn get_knight_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
+    let mut moves: Vec<Move> = Vec::new();
+
+    for &move_offset in KNIGHT_MOVES {
+        if let Some(next_index) = index.checked_add(move_offset) {
+            if next_index < 0 || next_index >= 64 { // Out of bounds check
+                continue;
+            }
+
+            let rank_diff = (index / 8 - next_index / 8).abs();
+            let file_diff = (index % 8 - next_index % 8).abs();
+
+            if !((rank_diff == 2 && file_diff == 1) || (file_diff == 2 && rank_diff == 1)) {
+                continue;
+            }
+
+            if position::is_square_occupied(position, next_index) &&
+               position::is_square_occupied_by_color(position, next_index, &color) {
+                continue;
+            }
+
+            moves.push(Move {from: index, to: next_index, promotion: PromotionOption::None});
+        }
+    }
+
+    moves
+}
+
+fn get_bishop_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
+    generate_unchecked_sliding_moves(position, index, color, BISHOP_DIRECTIONS, false)
+}
+
+fn get_rook_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
+    generate_unchecked_sliding_moves(position, index, color, ROOK_DIRECTIONS, false)
+}
+
+fn get_queen_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
+    generate_unchecked_sliding_moves(position, index, color, QUEEN_DIRECTIONS, false)
+}
+
+fn get_king_unchecked_moves(position: &position::Position, index: i32, color: &piece::Color) -> Vec<Move> {
+    generate_unchecked_sliding_moves(position, index, color, KING_DIRECTIONS, true)
+}
+
+fn generate_unchecked_sliding_moves(position: &position::Position, index: i32, color: &piece::Color, directions: &[i32], move_only_once: bool) -> Vec<Move> {
+    let mut moves: Vec<Move> = Vec::new();
+
+    let orthogonal_moves = &[-8, -1, 1, 8];
+    let diagonal_moves = &[-9, -7, 7, 9];
+
+    let rank = index / 8;
+    let file = index % 8;
+
+    for direction in directions {
+        let mut step = 1;
+
+        let mut last_rank = rank;
+        let mut last_file = file;
+
+        while let Some(next_index) = index.checked_add(direction * step) {
+            if next_index < 0 || next_index >= 64 {
+                break;
+            }
+
+            let next_rank = next_index / 8;
+            let next_file = next_index % 8;
+
+            // Wraparound Checks
+            if orthogonal_moves.iter().any(|&dir| dir == *direction) {
+                let is_different_rank = rank != next_rank;
+                let is_different_file = file != next_file;
+
+                if !((is_different_file && !is_different_rank) || (is_different_rank && !is_different_file)) {
+                    break; // Any rook move will change either rank or file but cannot change both.
+                }
+            }
+            if diagonal_moves.iter().any(|&dir| dir == *direction) {
+                if (last_rank - next_rank).abs() > 1 || (last_file - next_file).abs() > 1 {
+                    break;
+                }
+            }
+
+            if position::is_square_occupied(position, next_index) {
+                if position::is_square_occupied_by_color(position, next_index, &color) {
+                    break;
+                }
+
+                moves.push(Move {from: index, to: next_index, promotion: PromotionOption::None});
+                break;
+            } else {
+                moves.push(Move {from: index, to: next_index, promotion: PromotionOption::None});
+            }
+
+            if move_only_once { break; } // For the king because it moves one square.
+            step += 1;
+
+            last_rank = next_rank;
+            last_file = next_file;
         }
     }
 
